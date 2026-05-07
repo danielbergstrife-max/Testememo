@@ -53,16 +53,42 @@
         }
     }, false);
 
-    // 3. Anti-Debugger (Dificulta o uso do console aberto)
-    setInterval(function() {
-        (function() {
-            return false;
-        }
-        ['constructor']('debugger')
-        ['call']());
-    }, 500);
+    // 3. Anti-Debugger mais agressivo
+    const killInterface = function() {
+        document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0f172a;color:white;font-family:sans-serif;text-align:center;padding:20px;"><div><h1 style="font-size:3rem;margin-bottom:20px;">⚠️ ACESSO NEGADO</h1><p style="font-size:1.2rem;opacity:0.8;">O uso de ferramentas de desenvolvedor é proibido neste sistema.</p><button onclick="location.reload()" style="margin-top:30px;padding:12px 24px;background:#6366f1;border:none;border-radius:8px;color:white;font-weight:bold;cursor:pointer;">Tentar Novamente</button></div></div>';
+        throw new Error("DevTools Detectado");
+    };
 
-    // 4. Bloquear Arrastar Imagens/Elementos
+    // Detecção por redimensionamento (comum quando o console abre lateralmente)
+    let devtoolsOpen = false;
+    const threshold = 160;
+    setInterval(() => {
+        const widthDiff = window.outerWidth - window.innerWidth > threshold;
+        const heightDiff = window.outerHeight - window.innerHeight > threshold;
+        if (widthDiff || heightDiff) {
+            if (!devtoolsOpen) {
+                devtoolsOpen = true;
+                killInterface();
+            }
+        }
+    }, 1000);
+
+    // Detecção por debugger timing
+    setInterval(function() {
+        const startTime = performance.now();
+        debugger;
+        const endTime = performance.now();
+        if (endTime - startTime > 100) {
+            killInterface();
+        }
+    }, 1000);
+
+    // 4. Bloqueio de Execução Local (Se o arquivo for salvo e aberto no PC)
+    if (window.location.protocol === 'file:') {
+        window.location.href = "about:blank";
+    }
+
+    // 5. Bloquear Arrastar Imagens/Elementos
     document.addEventListener('dragstart', function(e) {
         if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
             e.preventDefault();
