@@ -32,30 +32,9 @@ function installPWA() {
     });
 }
 
-// ==================== SECURITY & DATA LAYER ====================
-const STORAGE_KEY = 'memoenglish_data_v2_secure';
+// ==================== DATA LAYER ====================
+const STORAGE_KEY = 'memoenglish_data_v2';
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbxO5PcEJnB3M88trJRn96ae8UN40PfFgdOt8RZo5zQzVCzunuPidnP5zX-8m7ToK8K7/exec';
-const SECURITY_KEY = 'm3m0_3ngl1sh_s3cur3_k3y'; // Custom key for obfuscation
-
-// Basic XOR Encryption to deter local inspection
-function _crypt(text) {
-    let result = '';
-    for (let i = 0; i < text.length; i++) {
-        result += String.fromCharCode(text.charCodeAt(i) ^ SECURITY_KEY.charCodeAt(i % SECURITY_KEY.length));
-    }
-    return btoa(result); // Base64 for storage safety
-}
-
-function _decrypt(encoded) {
-    try {
-        let text = atob(encoded);
-        let result = '';
-        for (let i = 0; i < text.length; i++) {
-            result += String.fromCharCode(text.charCodeAt(i) ^ SECURITY_KEY.charCodeAt(i % SECURITY_KEY.length));
-        }
-        return result;
-    } catch (e) { return null; }
-}
 
 function getDefaultData() {
     return {
@@ -94,6 +73,7 @@ function migrateData(data) {
                 p.levels = { standard: 0, quiz: 0, write: 0, listen: 0, pronounce: 0, speak: 0 };
                 modified = true;
             } else {
+                // Ensure all keys exist even if object exists
                 ['standard', 'quiz', 'write', 'listen', 'pronounce', 'speak'].forEach(k => {
                     if (p.levels[k] === undefined) {
                         p.levels[k] = 0;
@@ -113,42 +93,24 @@ function migrateData(data) {
 
 function loadData() {
     try {
-        let raw = localStorage.getItem(STORAGE_KEY);
-        
-        // Backward compatibility: check if old unencrypted data exists
-        if (!raw) {
-            const oldRaw = localStorage.getItem('memoenglish_data_v2');
-            if (oldRaw) {
-                const oldData = JSON.parse(oldRaw);
-                saveData(oldData); // Migrates to secure storage
-                localStorage.removeItem('memoenglish_data_v2');
-                raw = localStorage.getItem(STORAGE_KEY);
-            }
-        }
-
+        const raw = localStorage.getItem(STORAGE_KEY);
         if (raw) {
-            const decrypted = _decrypt(raw);
-            if (decrypted) {
-                const data = JSON.parse(decrypted);
-                const def = getDefaultData();
-                const merged = { ...def, ...data };
-                return migrateData(merged);
-            }
+            const data = JSON.parse(raw);
+            const def = getDefaultData();
+            // Merge defaults with loaded data to ensure all fields exist
+            const merged = { ...def, ...data };
+            return migrateData(merged);
         }
-    } catch (e) { console.error('Erro de Segurança no Carregamento:', e); }
+    } catch (e) { console.error('Erro ao carregar:', e); }
     return getDefaultData();
 }
 
 function saveData(data) {
-    try {
-        const json = JSON.stringify(data);
-        const secure = _crypt(json);
-        localStorage.setItem(STORAGE_KEY, secure);
-        
-        if (data.auth && data.auth.isLoggedIn && navigator.onLine) {
-            syncWithCloud(false);
-        }
-    } catch (e) { console.error('Erro ao Salvar Dados:', e); }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    // Trigger background sync if possible
+    if (data.auth && data.auth.isLoggedIn && navigator.onLine) {
+        syncWithCloud(false);
+    }
 }
 
 let appData = loadData();
@@ -528,14 +490,9 @@ async function pushToCloud() {
 
 async function callGas(data) {
     try {
-        // Security: Add a secret token to the payload to deter unauthorized API usage
-        const secureData = {
-            ...data,
-            app_token: SECURITY_KEY // Shared secret between app and GAS
-        };
         const res = await fetch(GAS_URL, {
             method: 'POST',
-            body: JSON.stringify(secureData)
+            body: JSON.stringify(data)
         });
         return await res.json();
     } catch (e) {
@@ -2386,62 +2343,8 @@ function editDistance(s1, s2) {
     return costs[s2.length];
 }
 
-// ==================== SECURITY UTILS ====================
-function escapeHTML(s) {
-    if (!s) return "";
-    return s.toString()
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-}
-
-function escapeJS(s) {
-    if (!s) return "";
-    return s.toString()
-        .replace(/\\/g, "\\\\")
-        .replace(/'/g, "\\'")
-        .replace(/"/g, '\\"')
-        .replace(/\n/g, "\\n")
-        .replace(/\r/g, "\\r");
-}
-
-// Anti-Copy & Anti-DevTools Logic
-(function securityCheck() {
-    // 1. Disable Context Menu
-    document.addEventListener('contextmenu', e => e.preventDefault());
-
-    // 2. Disable Key Shortcuts
-    document.addEventListener('keydown', e => {
-        // F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U, Ctrl+S
-        if (e.keyCode === 123 || 
-            (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74)) || 
-            (e.ctrlKey && (e.keyCode === 85 || e.keyCode === 83))) {
-            e.preventDefault();
-            return false;
-        }
-    });
-
-    // 3. Simple DevTools detection via debugger
-    setInterval(() => {
-        const start = performance.now();
-        debugger; // This will pause execution if DevTools is open
-        const end = performance.now();
-        if (end - start > 100) {
-            // DevTools likely open, could add more aggressive actions here
-            console.warn("Segurança: Inspeção detectada.");
-        }
-    }, 2000);
-
-    // 4. Domain Lock (Optional - Uncomment and set your domain)
-    /*
-    const authorizedDomain = 'seudominio.com';
-    if (window.location.hostname !== authorizedDomain && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-        document.body.innerHTML = '<div style="text-align:center; padding:50px; font-family:sans-serif;"><h3>Acesso Não Autorizado</h3><p>Este código só pode ser executado em domínios oficiais.</p></div>';
-    }
-    */
-})();
+function escapeHTML(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function escapeJS(s) { return s.replace(/'/g, "\\'"); }
 
 function playAudio(t) {
     if (!t || !('speechSynthesis' in window)) return;

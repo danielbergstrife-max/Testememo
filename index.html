@@ -4,42 +4,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <!-- Security: Content Security Policy -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://api.datamuse.com https://api.dictionaryapi.dev https://api.mymemory.translated.net;">
-    
-    <title>MemoEnglish - Premium Security</title>
+    <title>MemoEnglish - Premium</title>
     <link rel="stylesheet" href="style.css">
-    
-    <!-- Security: Anti-Copy & Anti-Selection Styles -->
-    <style>
-        body {
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
-            user-select: none;
-            -webkit-touch-callout: none;
-        }
-        input, textarea, [contenteditable="true"] {
-            -webkit-user-select: text;
-            -moz-user-select: text;
-            -ms-user-select: text;
-            user-select: text;
-        }
-    </style>
-
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-    
-    <!-- External scripts now local -->
-    <script src="confetti.min.js"></script>
-    
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#6366f1">
     <link rel="apple-touch-icon" href="icon-192.png">
 </head>
 
-<body>
+<body oncontextmenu="return false;" onselectstart="return false;">
+    <script src="protection.js"></script>
 
     <div class="app-container">
 
